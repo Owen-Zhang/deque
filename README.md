@@ -22,7 +22,7 @@ Random/list.List              30000000       46.9 ns/op      28 B/op      1 allo
 
 # Getting Started
 ```
-go get -u github.com/edwingeng/deque
+go get -u github.com/Owen-Zhang/deque
 ```
 
 # Usage

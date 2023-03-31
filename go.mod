@@ -1,3 +1,3 @@
-module github.com/edwingeng/deque
+module github.com/Owen-Zhang/deque
 
-go 1.12
+go 1.16

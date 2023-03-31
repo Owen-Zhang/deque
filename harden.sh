@@ -63,7 +63,7 @@ import (
     "sync"
     "sync/atomic"
 
-    "github.com/edwingeng/deque"
+    "github.com/Owen-Zhang/deque"
 EOF
 [[ $? -ne 0 ]] && exit 1
 

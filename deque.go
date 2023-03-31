@@ -5,13 +5,15 @@ import (
 	"sync/atomic"
 )
 
+// 默认每个数组的大小
 const chunkSize = 254
 
 var elemDefValue Elem
 
+//存数据的地方,同时标记存，取的位置信息
 type chunk struct {
-	s    int
-	e    int
+	s    int //data 已取出的位置
+	e    int //data 已存储的位置(1:第二位还未存),如果达到254后就要去外层新增一个chunk引用
 	data [chunkSize]Elem
 }
 
@@ -30,14 +32,15 @@ func (c *chunk) front() Elem {
 }
 
 type deque struct {
-	chunks []*chunk
+	chunks []*chunk //数据存储的slice, 引用 chunkPitch中真正有数据的位,如果每个254数组存满后，就要扩充上一级对象
 
-	chunkPitch []*chunk
-	sFree      int
-	eFree      int
+	chunkPitch []*chunk //64个引用位(前32用pushfront,后32位pushback)
+	sFree      int      //开始(前面)空余的个数 初始32
+	eFree      int      //后面空余的个数位     初始32
 }
 
 var (
+	//将chunk对象池化
 	sharedChunkPool = newChunkPool(func() interface{} {
 		return &chunk{}
 	})
@@ -46,9 +49,9 @@ var (
 // NewDeque creates a new Deque instance.
 func NewDeque() Deque {
 	dq := &deque{
-		chunkPitch: make([]*chunk, 64),
-		sFree:      32,
-		eFree:      32,
+		chunkPitch: make([]*chunk, 64), //默认64个槽位
+		sFree:      32,                 //开始都是对半分
+		eFree:      32,                 //开始都是对半分
 	}
 	return dq
 }
@@ -88,6 +91,7 @@ func (dq *deque) realloc() {
 	dq.chunks = newChunks
 }
 
+//向右扩充 占据【chunkPitch】右边的位置,如果没有位置了就需要扩充 chunkPitch的容量
 func (dq *deque) expandEnd() {
 	if f := dq.eFree; f == 0 {
 		dq.realloc()
@@ -100,6 +104,7 @@ func (dq *deque) expandEnd() {
 	dq.chunks = dq.chunkPitch[dq.sFree:newEnd]
 }
 
+//向左扩充,新增的chunk放到[chunkPitch]靠左的地方
 func (dq *deque) expandStart() {
 	if f := dq.sFree; f == 0 {
 		dq.realloc()
@@ -112,6 +117,7 @@ func (dq *deque) expandStart() {
 	dq.chunks = dq.chunkPitch[dq.sFree:newEnd]
 }
 
+// 回收[chunkPitch]右边的chunk
 func (dq *deque) shrinkEnd() {
 	n := len(dq.chunkPitch)
 	if dq.sFree+dq.eFree == n {
@@ -130,6 +136,7 @@ func (dq *deque) shrinkEnd() {
 	dq.eFree = n - dq.sFree
 }
 
+//回收[chunkPitch]左边的chunk
 func (dq *deque) shrinkStart() {
 	n := len(dq.chunkPitch)
 	if dq.sFree+dq.eFree == n {
